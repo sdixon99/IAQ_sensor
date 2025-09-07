@@ -18,6 +18,8 @@ const char* TOPIC_TVOC = "iaq_sensor/tvoc";
 const char* TOPIC_ETOH = "iaq_sensor/etoh";
 const char* TOPIC_ECO2 = "iaq_sensor/eco2";
 const char* TOPIC_REL_IAQ = "iaq_sensor/relative_iaq";
+const char* TOPIC_TEMP = "iaq_sensor/temperature";
+const char* TOPIC_HUMID = "iaq_sensor/humidity";
 
 HS4001 hs4001_sensor;
 RRH46410 rrh46410_sensor;
@@ -88,11 +90,11 @@ void setup() {
 void publish_discovery_messages() {
   publish_discovery_message("temperature", "IAQ Temperature", "°C", "temperature");
   publish_discovery_message("humidity", "IAQ Humidity", "%", "humidity");
-  publish_discovery_message("iaq", "IAQ Index", NULL, NULL);
+  publish_discovery_message("iaq", "IAQ Index", "\u200B", NULL);
   publish_discovery_message("tvoc", "IAQ TVOC", "mg/m3", NULL);
   publish_discovery_message("etoh", "IAQ eTOH", "ppm", NULL);
   publish_discovery_message("eco2", "IAQ eCO2", "ppm", "carbon_dioxide");
-  publish_discovery_message("relative_iaq", "Relative IAQ", NULL, NULL);
+  publish_discovery_message("relative_iaq", "Relative IAQ", "\u200B", NULL);
 }
 
 void publish_discovery_message(const char* object_id, const char* name, const char* unit_of_measurement, const char* device_class) {
@@ -160,6 +162,18 @@ void publish_relative_iaq(float value) {
   mqtt_client.publish(TOPIC_REL_IAQ, buffer);
 }
 
+void publish_temperature(float value) {
+  char buffer[VALUE_BUFFER_SIZE];
+  dtostrf(value, 1, 2, buffer);
+  mqtt_client.publish(TOPIC_TEMP, buffer);
+}
+
+void publish_humidity(float value) {
+  char buffer[VALUE_BUFFER_SIZE];
+  dtostrf(value, 1, 2, buffer);
+  mqtt_client.publish(TOPIC_HUMID, buffer);
+}
+
 void loop() {
   static unsigned long last_publish_time = 0;
   unsigned long current_time = millis();
@@ -207,6 +221,12 @@ void loop() {
       Serial.println(iaq_results_struct.sample_counter);
 
       // Publish data to MQTT topics
+
+      // Temperature: Raw value from HS4001 is in °C. No scaling needed.
+      publish_temperature(temperature);
+
+      // Humidity: Raw value from HS4001 is in %. No scaling needed.
+      publish_humidity(humidity);
 
       // IAQ Index: Raw value is 10x the actual value. Divide by 10.
       // The scaled value corresponds to the UBA Air Quality Levels (see datasheet Table 4):
